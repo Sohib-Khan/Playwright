@@ -2,30 +2,227 @@ name: Playwright Tests
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+
   pull_request:
-    branches: [ main, master ]
-  # Yahan workflow_dispatch add karein manual run ke liye
+    branches:
+      - main
+
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select test environment"
+        required: true
+        default: "qa"
+        type: choice
+        options:
+          - qa
+          - staging
+          - production
+
+# Required for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
+
+  # =====================================================
+  # JOB 1: RUN PLAYWRIGHT TESTS
+  # =====================================================
+
   test:
-    timeout-minutes: 60
+
+    name: Run Playwright Tests
+
     runs-on: ubuntu-latest
+
+    timeout-minutes: 60
+
+    env:
+      CI: true
+
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-    - name: Install dependencies
-      run: npm install
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-    - name: Run Playwright tests
-      run: npx playwright test
-    - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
+
+      # -----------------------------------------------
+      # Checkout repository
+      # -----------------------------------------------
+
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+
+      # -----------------------------------------------
+      # Setup Node.js
+      # -----------------------------------------------
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+
+      # -----------------------------------------------
+      # Check Node.js
+      # -----------------------------------------------
+
+      - name: Check Node.js Version
+        run: |
+          node -v
+          npm -v
+
+
+      # -----------------------------------------------
+      # Install dependencies
+      # -----------------------------------------------
+
+      - name: Install Dependencies
+        run: npm ci
+
+
+      # -----------------------------------------------
+      # Install Playwright
+      # -----------------------------------------------
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+
+      # -----------------------------------------------
+      # Determine environment
+      # -----------------------------------------------
+
+      - name: Set Test Environment
+        id: environment
+        run: |
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+
+          else
+
+            echo "environment=qa" >> $GITHUB_OUTPUT
+
+          fi
+
+
+      # -----------------------------------------------
+      # Set Base URL
+      # -----------------------------------------------
+
+      - name: Set Base URL
+        id: baseurl
+        run: |
+
+          ENVIRONMENT="${{ steps.environment.outputs.environment }}"
+
+          if [ "$ENVIRONMENT" = "qa" ]; then
+
+            echo "url=https://qa.example.com" >> $GITHUB_OUTPUT
+
+          elif [ "$ENVIRONMENT" = "staging" ]; then
+
+            echo "url=https://staging.example.com" >> $GITHUB_OUTPUT
+
+          elif [ "$ENVIRONMENT" = "production" ]; then
+
+            echo "url=https://example.com" >> $GITHUB_OUTPUT
+
+          else
+
+            echo "Unknown environment"
+            exit 1
+
+          fi
+
+
+      # -----------------------------------------------
+      # Display configuration
+      # -----------------------------------------------
+
+      - name: Show Test Configuration
+        run: |
+
+          echo "Environment:"
+          echo "${{ steps.environment.outputs.environment }}"
+
+          echo "Base URL:"
+          echo "${{ steps.baseurl.outputs.url }}"
+
+
+      # -----------------------------------------------
+      # Run Playwright
+      # -----------------------------------------------
+
+      - name: Run Playwright Tests
+        env:
+          BASE_URL: ${{ steps.baseurl.outputs.url }}
+
+        run: npx playwright test
+
+
+      # -----------------------------------------------
+      # Upload report as artifact
+      # -----------------------------------------------
+
+      - name: Upload Playwright Report
+        if: ${{ !cancelled() }}
+
+        uses: actions/upload-artifact@v5
+
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+
+      # -----------------------------------------------
+      # Upload report for Pages deployment
+      # -----------------------------------------------
+
+      - name: Upload Pages Artifact
+        if: ${{ !cancelled() }}
+
+        uses: actions/upload-pages-artifact@v4
+
+        with:
+          path: playwright-report/
+
+
+  # =====================================================
+  # JOB 2: DEPLOY REPORT TO GITHUB PAGES
+  # =====================================================
+
+  deploy-report:
+
+    name: Deploy Playwright Report
+
+    needs: test
+
+    if: ${{ always() && needs.test.result != 'cancelled' }}
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+
+      # -----------------------------------------------
+      # Deploy to GitHub Pages
+      # -----------------------------------------------
+
+      - name: Deploy Playwright Report to GitHub Pages
+
+        id: deployment
+
+        uses: actions/deploy-pages@v4
