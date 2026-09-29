@@ -30,7 +30,7 @@ permissions:
 jobs:
 
   # =====================================================
-  # JOB 1: RUN PLAYWRIGHT TESTS
+  # JOB 1: RUN  PLAYWRIGHT  TESTS
   # =====================================================
 
   test:
