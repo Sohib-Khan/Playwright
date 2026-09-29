@@ -11,10 +11,7 @@ test('login Hrms', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Login' }).click();
 
-  await page.getByText('Invalid credentials').screenshot({
-        path: 'screenshots/after-login8.png'
-    });
-
+  
 
  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
 
