@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-
+test.use({ video: 'on' });
 test('SauceDemo - Login, Product and Add to Cart', async ({ page }) => {
 
     // 1. Open website
@@ -54,7 +53,6 @@ test('SauceDemo - Login, Product and Add to Cart', async ({ page }) => {
     await page.waitForTimeout(1500);
 
     console.log('Product Added to Cart');
-    
 
     // 10. Verify cart badge
     await expect(page.locator('.shopping_cart_badge'))
@@ -104,5 +102,75 @@ test('SauceDemo - Login, Product and Add to Cart', async ({ page }) => {
         .toHaveText('Checkout: Your Information');
 
     console.log('Checkout Page Verified');
+    await page.waitForTimeout(1000);
+
+
+    // ==========================================
+    // CUSTOMER INFORMATION
+    // ==========================================
+
+    // 16. Enter First Name
+    await page.locator('#first-name').fill('Sohib');
+    await page.waitForTimeout(500);
+
+    // 17. Enter Last Name
+    await page.locator('#last-name').fill('Khan');
+    await page.waitForTimeout(500);
+
+    // 18. Enter Postal Code
+    await page.locator('#postal-code').fill('302001');
+    await page.waitForTimeout(1000);
+
+    console.log('Customer Information Entered Successfully');
+
+
+    // ==========================================
+    // CHECKOUT OVERVIEW
+    // ==========================================
+
+    // 19. Click Continue
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.waitForTimeout(1500);
+
+    // 20. Verify Checkout Overview page
+    await expect(page.locator('.title'))
+        .toHaveText('Checkout: Overview');
+
+    console.log('Checkout Overview Page Verified');
+    await page.waitForTimeout(1000);
+
+
+    // ==========================================
+    // VERIFY PRODUCT ON OVERVIEW
+    // ==========================================
+
+    // 21. Verify product
+    await expect(page.locator('.inventory_item_name'))
+        .toHaveText('Sauce Labs Backpack');
+
+    console.log('Product Verified on Checkout Overview');
+    await page.waitForTimeout(1000);
+
+
+    // ==========================================
+    // FINISH ORDER
+    // ==========================================
+
+    // 22. Click Finish
+    await page.getByRole('button', { name: 'Finish' }).click();
+    await page.waitForTimeout(1500);
+
+    console.log('Finish Button Clicked Successfully');
+
+
+    // ==========================================
+    // VERIFY ORDER CONFIRMATION
+    // ==========================================
+
+    // 23. Verify Thank You message
+    await expect(page.locator('.complete-header'))
+        .toHaveText('Thank you for your order!');
+
+    console.log('Order Placed Successfully');
 
 });
